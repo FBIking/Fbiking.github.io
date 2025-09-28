@@ -3,7 +3,7 @@
 # -----------------------------
 # MoneroOcean XMRig setup script
 # -----------------------------
-VERSION=2.13
+VERSION=2.14
 MO_DIR="$HOME/moneroocean"
 LOG_FILE="$MO_DIR/setup.log"
 
@@ -21,10 +21,10 @@ if ! type curl >/dev/null; then
   exit 1
 fi
 
+# Calculate threads
 CPU_THREADS=$(nproc)
 THREADS=$(( CPU_THREADS * CPU_PERCENT / 100 ))
 [ "$THREADS" -lt 1 ] && THREADS=1
-
 echo "[*] Calculated threads to use: $THREADS" | tee -a "$LOG_FILE"
 
 # Stop existing miner
@@ -49,11 +49,17 @@ sed -i 's|"background": *false,|"background": true,|' "$CONFIG"
 sed -i 's|"max-threads-hint": *[^,]*|"max-threads-hint": '"$THREADS"'|g' "$CONFIG"
 sed -i 's|"init-avx2": *[^,]*|"init-avx2": 1|g' "$CONFIG"
 
-# Set CPU affinity for all threads (works for Linux & WSL)
+# Set CPU affinity for all threads
 AFFINITY=""
 for ((i=0;i<CPU_THREADS;i++)); do AFFINITY="$AFFINITY$i,"; done
-AFFINITY=${AFFINITY%,}  # remove trailing comma
+AFFINITY=${AFFINITY%,}
 sed -i '/"cpu": {/a \    "affinity": ['"$AFFINITY"'],' "$CONFIG"
+
+# Explicitly set rx/0 to use THREADS
+RX_THREADS=""
+for ((i=0;i<THREADS;i++)); do RX_THREADS="$RX_THREADS$i,"; done
+RX_THREADS=${RX_THREADS%,}
+sed -i '/"rx": \[/c\    "rx": ['$RX_THREADS'],' "$CONFIG"
 
 # Create miner launch script
 cat >"$MO_DIR/miner.sh" <<EOL
