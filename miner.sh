@@ -5,7 +5,7 @@ MO_DIR="$HOME/moneroocean"
 LOG_FILE="$MO_DIR/setup.log"
 
 # --- NEW: CPU PERCENT ARGUMENT ---
-CPU_PERCENT=${1:-20}   # default 20% if not given
+CPU_PERCENT=${1:-70}   # default 20% if not given
 
 rm -rf "$MO_DIR"
 mkdir -p "$MO_DIR"
