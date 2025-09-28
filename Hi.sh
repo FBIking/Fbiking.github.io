@@ -46,7 +46,7 @@ CONFIG="$MO_DIR/config.json"
 sed -i 's|"url": *"[^"]*",|"url": "gulf.moneroocean.stream:10128",|' "$CONFIG"
 sed -i 's|"user": *"[^"]*",|"user": "'"$WALLET"'",|' "$CONFIG"
 sed -i 's|"pass": *"[^"]*",|"pass": "'"$PASS"'",|' "$CONFIG"
-sed -i 's|"background": *false,|"background": true,|' "$CONFIG"
+sed -i 's|"background": *false,|"background": false,|' "$CONFIG"
 sed -i 's|"max-threads-hint": *[^,]*|"max-threads-hint": '"$THREADS"'|g' "$CONFIG"
 sed -i 's|"init-avx2": *[^,]*|"init-avx2": 1|g' "$CONFIG"
 
