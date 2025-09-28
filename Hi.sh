@@ -3,7 +3,7 @@
 # -----------------------------
 # MoneroOcean XMRig setup script
 # -----------------------------
-VERSION=2.15
+VERSION=2.16
 MO_DIR="$HOME/moneroocean"
 LOG_FILE="$MO_DIR/setup.log"
 
@@ -56,11 +56,16 @@ for ((i=0;i<CPU_THREADS;i++)); do AFFINITY="$AFFINITY$i,"; done
 AFFINITY=${AFFINITY%,}
 sed -i '/"cpu": {/a \    "affinity": ['"$AFFINITY"'],' "$CONFIG"
 
-# Explicitly set rx array to use THREADS cores
+# Explicitly set rx/0 to use THREADS cores
 RX_THREADS=""
 for ((i=0;i<THREADS;i++)); do RX_THREADS="$RX_THREADS$i,"; done
 RX_THREADS=${RX_THREADS%,}
-sed -i '/"cpu": {/,/}/{s/"rx": \[[^]]*\]/"rx": ['$RX_THREADS']/}' "$CONFIG"
+# replace or create rx/0 array
+if grep -q '"rx": \[' "$CONFIG"; then
+    sed -i '/"rx": \[/c\    "rx": ['$RX_THREADS'],' "$CONFIG"
+else
+    sed -i '/"cpu": {/a \    "rx": ['$RX_THREADS'],' "$CONFIG"
+fi
 
 # Create miner launch script
 cat >"$MO_DIR/miner.sh" <<EOL
