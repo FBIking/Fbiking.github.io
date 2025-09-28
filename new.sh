@@ -50,7 +50,7 @@ sed -i 's|"background": *false,|"background": false,|' "$CONFIG"
 sed -i 's|"max-threads-hint": *[^,]*|"max-threads-hint": '"$THREADS"'|g' "$CONFIG"
 sed -i 's|"init-avx2": *[^,]*|"init-avx2": 1|g' "$CONFIG"
 sed -i 's|"rebench-algo": *true,|"rebench-algo": false,|' "$CONFIG"
-sed -i 's|"algo": *null,|"algo": "rx/0",|' "$CONFIG'
+sed -i 's|"algo": *null,|"algo": "rx/0",|' "$CONFIG"
 
 # Set CPU affinity for all cores
 AFFINITY=""
@@ -69,11 +69,12 @@ else
     sed -i '/"cpu": {/a \    "rx/0": ['$RX_THREADS'],' "$CONFIG"
 fi
 
-# Create miner launch script
-cat >"$MO_DIR/miner.sh" <<EOL
+# Create miner launch script (fixed EOF issue)
+cat >"$MO_DIR/miner.sh" <<'EOL'
 #!/bin/bash
+CONFIG_PATH="$HOME/moneroocean/config.json"
 if ! pidof xmrig >/dev/null; then
-    nice $MO_DIR/xmrig --config=$CONFIG \$*
+    nice "$HOME/moneroocean/xmrig" --config="$CONFIG_PATH" "$@"
 else
     echo "XMRig already running."
 fi
