@@ -61,8 +61,8 @@ RX_THREADS=""
 for ((i=0;i<THREADS;i++)); do RX_THREADS="$RX_THREADS$i,"; done
 RX_THREADS=${RX_THREADS%,}
 # replace or create rx/0 array
-if grep -q '"rx": \[' "$CONFIG"; then
-    sed -i '/"rx": \[/c\    "rx/0": ['$RX_THREADS'],' "$CONFIG"
+if grep -q '"rx/0": \[' "$CONFIG"; then
+    sed -i '/"rx/0": \[/c\    "rx/0": ['$RX_THREADS'],' "$CONFIG"
 else
     sed -i '/"cpu": {/a \    "rx/0": ['$RX_THREADS'],' "$CONFIG"
 fi
