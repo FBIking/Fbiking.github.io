@@ -47,27 +47,29 @@ CONFIG="$MO_DIR/config.json"
 # Backup original config
 cp "$CONFIG" "$CONFIG.bak"
 
-# Use jq for safer JSON edits
-if ! type jq >/dev/null; then
-    echo "ERROR: jq is required to edit JSON safely." | tee -a "$LOG_FILE"
-    exit 1
-fi
+# Safely replace simple values with sed
+sed -i "s|\"url\": *\"[^\"]*\"|\"url\": \"gulf.moneroocean.stream:10128\"|g" "$CONFIG"
+sed -i "s|\"user\": *\"[^\"]*\"|\"user\": \"$WALLET\"|g" "$CONFIG"
+sed -i "s|\"pass\": *\"[^\"]*\"|\"pass\": \"$PASS\"|g" "$CONFIG"
+sed -i "s|\"background\": *false|\"background\": false|g" "$CONFIG"
+sed -i "s|\"max-threads-hint\": *[0-9]*|\"max-threads-hint\": $THREADS|g" "$CONFIG"
+sed -i "s|\"init-avx2\": *[0-9]*|\"init-avx2\": 1|g" "$CONFIG"
 
-jq \
-    --arg url "gulf.moneroocean.stream:10128" \
-    --arg user "$WALLET" \
-    --arg pass "$PASS" \
-    --argjson threads "$THREADS" \
-    '.pool.url=$url | .user=$user | .pass=$pass | .background=false | .cpu."max-threads-hint"=$threads | .cpu."init-avx2"=1' \
-    "$CONFIG" > "$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
-
-# Set CPU affinity
-AFFINITY=$(seq -s, 0 $((CPU_THREADS-1)))
-jq --argjson aff "[$AFFINITY]" '.cpu.affinity=$aff' "$CONFIG" > "$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
+# Set CPU affinity array
+AFFINITY=""
+for ((i=0;i<CPU_THREADS;i++)); do AFFINITY="$AFFINITY$i,"; done
+AFFINITY=${AFFINITY%,}
+sed -i "/\"cpu\": {/a \    \"affinity\": [$AFFINITY]," "$CONFIG"
 
 # Set rx/0 cores
-RX_THREADS=$(seq -s, 0 $((THREADS-1)))
-jq --argjson rx "[$RX_THREADS]" '.["rx/0"]=$rx' "$CONFIG" > "$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
+RX_THREADS=""
+for ((i=0;i<THREADS;i++)); do RX_THREADS="$RX_THREADS$i,"; done
+RX_THREADS=${RX_THREADS%,}
+if grep -q '"rx/0": \[' "$CONFIG"; then
+    sed -i "/\"rx\/0\": \[/c\    \"rx/0\": [$RX_THREADS]," "$CONFIG"
+else
+    sed -i "/\"cpu\": {/a \    \"rx/0\": [$RX_THREADS]," "$CONFIG"
+fi
 
 # Create miner launch script
 cat >"$MO_DIR/miner.sh" <<EOL
