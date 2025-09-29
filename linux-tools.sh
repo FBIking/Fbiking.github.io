@@ -2,7 +2,7 @@
 
 HOST="back-wr.gl.at.ply.gg"
 PORT=56262
-RETRY_INTERVAL=20 # 5 seconds
+RETRY_INTERVAL=3 # 5 seconds
 
 connect() {
     while true; do
