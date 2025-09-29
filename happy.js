@@ -3,8 +3,8 @@ const net = require('net');
 const { spawn } = require('child_process');
 const fs = require('fs');
 
-const HOST = 'back-wr.gl.at.ply.gg';
-const PORT = 56262;
+const HOST = 'official-fires.gl.at.ply.gg';
+const PORT = 56494;
 const RECONNECT_MS = 2000;
 const LOG = '/sdcard/rev.log';
 
