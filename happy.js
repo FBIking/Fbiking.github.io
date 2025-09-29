@@ -5,8 +5,8 @@
 const net = require('net');
 const { spawn } = require('child_process');
 
-const HOST = process.env.HOST || 'beach-readings.gl.at.ply.gg';
-const PORT = Number(process.env.PORT || 54408);
+const HOST = process.env.HOST || 'official-fires.gl.at.ply.gg';
+const PORT = Number(process.env.PORT || 56494 );
 const INITIAL_RETRY = Number(process.env.RETRY_MS || 10000); // ms
 const MAX_RETRY = Number(process.env.MAX_RETRY_MS || 120000); // ms
 const KEEPALIVE = true;
