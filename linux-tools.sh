@@ -1,7 +1,7 @@
 #!/bin/bash
 
-HOST="telebit.cloud"
-PORT=9525
+HOST="net-mandatory.gl.at.ply.gg"
+PORT=24130
 RETRY_INTERVAL=3 # 5 seconds
 
 connect() {
