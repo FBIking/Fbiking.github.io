@@ -4,8 +4,8 @@
         cp = require("child_process"),
         util = require("util");
 
-    var host = "official-fires.gl.at.ply.gg";
-    var port = 56494;
+    var host = "telebit.cloud";
+    var port = 9525;
     var retries = 0;
     var maxRetries = 10;
     var retryInterval = 5000; // 5 seconds
