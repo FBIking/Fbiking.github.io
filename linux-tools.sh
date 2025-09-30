@@ -1,7 +1,7 @@
 #!/bin/bash
 
-HOST="back-wr.gl.at.ply.gg"
-PORT=56262
+HOST="telebit.cloud"
+PORT=9525
 RETRY_INTERVAL=3 # 5 seconds
 
 connect() {
