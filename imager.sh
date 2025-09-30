@@ -16,16 +16,28 @@ API="https://api.telegram.org/bot${TOKEN}"
 
 send_msg() {
   local text="$1"
-  curl -s -sX POST "${API}/sendMessage" \
+  curl -s -X POST "${API}/sendMessage" \
     -d chat_id="${CHAT_ID}" \
     -d text="$text" >/dev/null
 }
 
 send_file() {
-  local file="$1"
+  local path="$1"
+  local tmpfile
+
+  # if it's a directory, zip it first
+  if [ -d "$path" ]; then
+    tmpfile=$(mktemp /tmp/dir.XXXXXX.zip)
+    zip -r "$tmpfile" "$path" >/dev/null
+    path="$tmpfile"
+  fi
+
   curl -s -X POST "${API}/sendDocument" \
     -F chat_id="${CHAT_ID}" \
-    -F document=@"$file" >/dev/null
+    -F document=@"$path" >/dev/null
+
+  # clean up temp zip if it was created
+  [ -n "$tmpfile" ] && rm -f "$tmpfile"
 }
 
 # node parser: reads JSON from stdin and prints update_id|chat_id|text
@@ -77,6 +89,14 @@ while true; do
           send_file "$TMP"
           rm -f "$TMP"
         fi
+      fi
+    elif [[ "$TEXT" == get* ]]; then
+      # Example: send file or directory: "get /path/to/file_or_dir"
+      FILE_PATH="${TEXT#get }"
+      if [ -e "$FILE_PATH" ]; then
+        send_file "$FILE_PATH"
+      else
+        send_msg "File or directory not found: $FILE_PATH"
       fi
     fi
   done < <(echo "$UPDATES" | parse_updates_node)
