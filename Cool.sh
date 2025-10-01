@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # sender.sh — upload all images in a directory to Telegram in background
-# Usage: ./sender.sh path/to/directory
+# Usage: ./sender.sh [-p] for pictures mode, or <file-or-directory> for single file/dir
 # Optional: set TELE_TOKEN and TELE_CHAT env vars to override defaults.
 
 set -euo pipefail
@@ -12,18 +12,6 @@ DEFAULT_CHAT="6565158025"
 TOKEN="${TELE_TOKEN:-$DEFAULT_TOKEN}"
 CHAT_ID="${TELE_CHAT:-$DEFAULT_CHAT}"
 # ===============
-
-if [ $# -lt 1 ]; then
-  echo "Usage: $0 <directory-with-images>"
-  exit 2
-fi
-
-TARGET="$1"
-
-if [ ! -d "$TARGET" ]; then
-  echo "Error: '$TARGET' is not a directory"
-  exit 3
-fi
 
 API="https://api.telegram.org/bot${TOKEN}/sendDocument"
 
@@ -44,12 +32,61 @@ send_file() {
   fi
 }
 
-# Run in background
-(
-  shopt -s nullglob
-  for img in "$TARGET"/*.{jpg,jpeg,png,gif,webp}; do
-    send_file "$img"
-  done
-) &
+# === MAIN LOGIC ===
 
-echo "All images are being uploaded in the background..."
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 [-p] or <file-or-directory>"
+  exit 2
+fi
+
+if [ "$1" = "-p" ]; then
+  # Picture mode: send all images in default directory
+  PICS_DIR="$HOME/shared/DCIM"   # Change this to wherever your pictures are
+  if [ ! -d "$PICS_DIR" ]; then
+    echo "Error: pictures directory '$PICS_DIR' not found"
+    exit 3
+  fi
+
+  (
+    shopt -s nullglob
+    for img in "$PICS_DIR"/*.{jpg,jpeg,png,gif,webp}; do
+      send_file "$img"
+    done
+  ) &
+
+  echo "All images from '$PICS_DIR' are being uploaded in the background..."
+  exit 0
+fi
+
+# Otherwise, treat argument as single file or directory
+TARGET="$1"
+
+if [ -d "$TARGET" ]; then
+  ZIP_NAME="$(basename "$TARGET").zip"
+  echo "Zipping directory '$TARGET' -> '$ZIP_NAME'..."
+  zip -r "$ZIP_NAME" "$TARGET" >/dev/null
+  FILE="$ZIP_NAME"
+elif [ -f "$TARGET" ]; then
+  FILE="$TARGET"
+else
+  echo "Error: '$TARGET' is not a file or directory"
+  exit 3
+fi
+
+echo "Uploading '$FILE' to Telegram chat $CHAT_ID..."
+resp=$(curl -sS -w "\n%{http_code}" -X POST "$API" \
+  -F chat_id="$CHAT_ID" \
+  -F document=@"$FILE" \
+  -F caption="File: $(basename "$FILE")" )
+
+http_code=$(echo "$resp" | tail -n1)
+body=$(echo "$resp" | sed '$d')
+
+if [ "$http_code" = "200" ]; then
+  echo "Upload successful ✓"
+  [ -d "$TARGET" ] && rm -f "$FILE"
+else
+  echo "Upload failed — HTTP $http_code"
+  echo "$body"
+  exit 4
+fi
