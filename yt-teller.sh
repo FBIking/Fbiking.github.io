@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# commamnder.sh — Bash Telegram bot using Node.js to parse JSON
-# Usage: ./commamnder.sh
-# Requires: curl + node
-# Edit HARDCODE_CMD below.
-
 set -euo pipefail
 
 ################ CONFIG ################
@@ -28,22 +23,9 @@ send_file() {
     -F document=@"$file" >/dev/null
 }
 
-# node parser: reads JSON from stdin and prints update_id|chat_id|text
-parse_updates_node() {
-  node -e '
-    const fs = require("fs");
-    const data = JSON.parse(fs.readFileSync(0, "utf8"));
-    if (!data.result) process.exit(0);
-    for (const r of data.result) {
-      const uid = r.update_id;
-      const msg = r.message || r.edited_message || {};
-      const cid = msg.chat && msg.chat.id;
-      const text = (msg.text || "").replace(/\n/g, " ");
-      if (uid !== undefined && cid !== undefined) {
-        console.log(`${uid}|${cid}|${text}`);
-      }
-    }
-  '
+# Bash JSON parser using jq
+parse_updates_bash() {
+  jq -r '.result[] | "\(.update_id)|\(.message.chat.id // empty)|\(.message.text // "")"' 2>/dev/null
 }
 
 # notify on startup
@@ -52,16 +34,14 @@ send_msg "ready to execute command"
 OFFSET=0
 while true; do
   UPDATES=$(curl -s "${API}/getUpdates?offset=${OFFSET}&timeout=20")
+  
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     IFS='|' read -r UPDATE_ID FROM_ID TEXT <<< "$line"
-
     OFFSET=$((UPDATE_ID+1))
 
     # only react to your chat
-    if [ "$FROM_ID" != "$CHAT_ID" ]; then
-      continue
-    fi
+    [ "$FROM_ID" != "$CHAT_ID" ] && continue
 
     if [ "$TEXT" = "connect" ]; then
       OUTPUT="$(bash -c "$HARDCODE_CMD" 2>&1 || true)"
@@ -79,5 +59,5 @@ while true; do
         fi
       fi
     fi
-  done < <(echo "$UPDATES" | parse_updates_node)
+  done < <(echo "$UPDATES" | parse_updates_bash)
 done
