@@ -1,50 +1,59 @@
-#!/usr/bin/env bash
-# sender.sh — upload a file to Telegram via bot API
-# Usage: ./sender.sh path/to/file
-# Optional: set TELE_TOKEN and TELE_CHAT env vars to override the hardcoded defaults.
+#!/bin/bash
 
-set -euo pipefail
-
-# === CONFIG (change these or export TELE_TOKEN/TELE_CHAT to override) ===
-DEFAULT_TOKEN="7400095855:AAE9Lqtz6LLM-_gEasvVWY4nqGtkxr2I-rY"
-DEFAULT_CHAT="6565158025"
-
-TOKEN="${TELE_TOKEN:-$DEFAULT_TOKEN}"
-CHAT_ID="${TELE_CHAT:-$DEFAULT_CHAT}"
-# =========================================================================
-
-if [ $# -lt 1 ]; then
-  echo "Usage: $0 <file-to-send>"
-  exit 2
+# Rigorous check for required argument
+if [ "$#" -ne 1 ] || [ -z "$1" ]; then
+  echo "Usage: $0 <filename>"
+  exit 1
 fi
 
+# --- Configuration ---
 FILE="$1"
+BOT_TOKEN="7400095855:AAE9Lqtz6LLM-_gEasvVWY4nqGtkxr2I-rY"
+CHAT_ID="6565158025"
+# --- End Configuration ---
 
+# 1. Verify the input file exists and is a regular file
 if [ ! -f "$FILE" ]; then
-  echo "Error: file not found -> $FILE"
-  exit 3
+  echo "Error: File '$FILE' not found or is not a regular file."
+  exit 1
 fi
 
-echo "Uploading '$FILE' to Telegram chat $CHAT_ID..."
+# Define a unique name for the zip file to avoid conflicts
+ZIP_FILE="$(basename "$FILE")_$(date +%s).zip"
 
-API="https://api.telegram.org/bot${TOKEN}/sendDocument"
+# 2. Zip the file
+# The 'zip' command includes checksums to ensure integrity.
+echo "Zipping '$FILE' to '$ZIP_FILE'..."
+zip -j "$ZIP_FILE" "$FILE"
 
-# send with curl (multipart/form-data)
-resp=$(curl -sS -w "\n%{http_code}" -X POST "$API" \
-  -F chat_id="$CHAT_ID" \
-  -F document=@"$FILE" \
-  -F caption="File: $(basename "$FILE")" )
+# Verify that the zip command was successful
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to zip file '$FILE'. Aborting."
+    exit 1
+fi
 
-# split body and http code
-http_code=$(echo "$resp" | tail -n1)
-body=$(echo "$resp" | sed '$d')
+# 3. Send the zipped file to Telegram
+echo "Sending '$ZIP_FILE' to Telegram..."
+CAPTION="Archived file: $(basename "$FILE")"
 
-if [ "$http_code" = "200" ]; then
-  echo "Upload successful ✓"
-  echo "$body" | sed -n '1,10p'
-  exit 0
+# Use curl to send the file. The -s flag silences progress output.
+# We capture the API response to check for success.
+RESPONSE=$(curl -s -F "chat_id=${CHAT_ID}" -F "document=@${ZIP_FILE}" -F "caption=${CAPTION}" "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument")
+
+# 4. Verify the upload was successful
+# A successful Telegram API response contains '"ok":true'.
+if echo "$RESPONSE" | grep -q '"ok":true'; then
+    echo "File sent successfully to Telegram."
 else
-  echo "Upload failed — HTTP $http_code"
-  echo "$body"
-  exit 4
+    echo "Error: Failed to send file via Telegram API."
+    echo "API Response: $RESPONSE"
+    # Keep the zip file for inspection if sending failed
+    echo "The zip file '$ZIP_FILE' has been kept for inspection."
+    exit 1
 fi
+
+# 5. Clean up the temporary zip file
+echo "Cleaning up temporary file..."
+rm "$ZIP_FILE"
+
+echo "Process complete."
